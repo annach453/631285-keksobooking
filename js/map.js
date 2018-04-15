@@ -29,7 +29,7 @@ var getRandomArrayValues = function (source) {
 var testDataSource = {
   avatarSrc: function (avatarNumber) {
     var avatarAddress = 'img/avatars/user{{xx}}.png';
-    var avatarAddressNumber = new Intl.NumberFormat('ru-RU', {minimumIntegerDigits: 2, useGrouping: false}).format(avatarNumber + 1);
+    var avatarAddressNumber = new Intl.NumberFormat('ru-RU', {minimumIntegerDigits: 2}).format(avatarNumber);
     return avatarAddress.replace('{{xx}}', avatarAddressNumber);
   },
   titleSrc: [
@@ -84,7 +84,7 @@ var renderTestData = function (testData, quantity) {
     var locationY = getRandomValueFromRange(150, 500);
     testdata.push({
       author: {
-        avatar: testData.avatarSrc(i),
+        avatar: testData.avatarSrc(i + 1),
       },
       offer: {
         title: titles[i],
