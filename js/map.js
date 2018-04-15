@@ -1,13 +1,13 @@
 'use strict';
 
 // Возвращает случайное число из диапазона
-var getRandomElement = function (min, max) {
+var getRandomValueFromRange = function (min, max) {
   return min + Math.floor(Math.random() * (max - min + 1));
 };
 
 // Возвращает 1 случайное значение массива
 var getRandomArrayValue = function (array) {
-  return array[getRandomElement(0, array.length - 1)];
+  return array[getRandomValueFromRange(0, array.length - 1)];
 };
 
 // Перетасовывает значения массива в случайном порядке
@@ -20,14 +20,18 @@ var shuffleArray = function (source) {
 
 // Возвращает случайное количество значений массива
 var getRandomArrayValues = function (source) {
-  var valuesQuantity = getRandomElement(1, source.length); // Генерирует количество значений массива
-  var array = shuffleArray(source.slice()).slice(0, valuesQuantity);
+  var valuesQuantity = getRandomValueFromRange(1, source.length); // Генерирует количество значений массива
+  var array = shuffleArray(source).slice(0, valuesQuantity);
   return array;
 };
 
 // Значения для генерация тестовых данных
 var testDataSource = {
-  avatarSrc: 'img/avatars/user{{xx}}.png',
+  avatarSrc: function (avatarNumber) {
+    var avatarAddress = 'img/avatars/user{{xx}}.png';
+    var avatarAddressNumber = new Intl.NumberFormat('ru-RU', {minimumIntegerDigits: 2, useGrouping: false}).format(avatarNumber + 1);
+    return avatarAddress.replace('{{xx}}', avatarAddressNumber);
+  },
   titleSrc: [
     'Большая уютная квартира',
     'Маленькая неуютная квартира',
@@ -76,19 +80,19 @@ var renderTestData = function (testData, quantity) {
   var testdata = [];
   var titles = shuffleArray(testData.titleSrc);
   for (var i = 0; i < quantity; i++) {
-    var locationX = getRandomElement(300, 900);
-    var locationY = getRandomElement(150, 500);
+    var locationX = getRandomValueFromRange(300, 900);
+    var locationY = getRandomValueFromRange(150, 500);
     testdata.push({
       author: {
-        avatar: testData.avatarSrc.replace('{{xx}}', new Intl.NumberFormat('ru-RU', {minimumIntegerDigits: 2, useGrouping: false}).format(i + 1)),
+        avatar: testData.avatarSrc(i),
       },
       offer: {
         title: titles[i],
         address: locationX + ', ' + locationY,
-        price: getRandomElement(1000, 1000000),
+        price: getRandomValueFromRange(1000, 1000000),
         type: getRandomArrayValue(testData.typeSrc),
-        rooms: getRandomElement(1, 5),
-        guests: getRandomElement(1, 10),
+        rooms: getRandomValueFromRange(1, 5),
+        guests: getRandomValueFromRange(1, 10),
         checkin: getRandomArrayValue(testData.checkinChecoutTimeSrc),
         checkout: getRandomArrayValue(testData.checkinChecoutTimeSrc),
         features: getRandomArrayValues(testData.featuresSrc),
@@ -102,6 +106,19 @@ var renderTestData = function (testData, quantity) {
     });
   }
   return testdata;
+};
+
+// Получает тип объявления
+var getAdType = function (type) {
+  if (type === 'flat') {
+    return 'Квартира';
+  } else if (type === 'bungalo') {
+    return 'Бунгало';
+  } else if (type === 'house') {
+    return 'Дом';
+  } else {
+    return 'Дворец';
+  }
 };
 
 // Создает фрагмент c 1 меткой
@@ -138,27 +155,18 @@ var createAdFragment = function (dataSourceItem, markFragmentTemplateSrc) {
   fragment.querySelector('.popup__title').textContent = dataSourceItem.offer.title;
   fragment.querySelector('.popup__text--address').textContent = dataSourceItem.offer.address;
   fragment.querySelector('.popup__text--price').textContent = dataSourceItem.offer.price + '₽/ночь';
-  switch (dataSourceItem.offer.type) {
-    case 'flat':
-      fragment.querySelector('.popup__type').textContent = 'Квартира';
-      break;
-    case 'bungalo':
-      fragment.querySelector('.popup__type').textContent = 'Бунгало';
-      break;
-    case 'house':
-      fragment.querySelector('.popup__type').textContent = 'Дом';
-      break;
-    case 'palace':
-      fragment.querySelector('.popup__type').textContent = 'Дворец';
-      break;
-  }
-  fragment.querySelector('.popup__text--capacity').textContent = dataSourceItem.offer.rooms + ' комнаты для ' + dataSourceItem.offer.guests + ' гостей';
-  fragment.querySelector('.popup__text--time').textContent = 'Заезд после ' + dataSourceItem.offer.checkin + ', выезд до ' + dataSourceItem.offer.checkout;
+  fragment.querySelector('.popup__type').textContent = getAdType(dataSourceItem.offer.type);
+  var capacityText = dataSourceItem.offer.rooms + ' комнаты для ' + dataSourceItem.offer.guests + ' гостей';
+  fragment.querySelector('.popup__text--capacity').textContent = capacityText;
+  var timeText = 'Заезд после ' + dataSourceItem.offer.checkin + ', выезд до ' + dataSourceItem.offer.checkout;
+  fragment.querySelector('.popup__text--time').textContent = timeText;
 
   // Добавляет доступные удобства
   fragment.querySelector('.popup__features').textContent = '';
   for (var i = 0; i < dataSourceItem.offer.features.length; i++) {
-    fragment.querySelector('.popup__features').appendChild(document.createElement('li')).classList.add('popup__feature', 'popup__feature--' + dataSourceItem.offer.features[i]);
+    var feature = fragment.querySelector('.popup__features').appendChild(document.createElement('li'));
+    feature.classList.add('popup__feature');
+    feature.classList.add('popup__feature--' + dataSourceItem.offer.features[i]);
   }
 
   fragment.querySelector('.popup__description').textContent = dataSourceItem.offer.description;
@@ -167,7 +175,8 @@ var createAdFragment = function (dataSourceItem, markFragmentTemplateSrc) {
   var imageFragment = fragment.querySelector('.popup__photo');
   fragment.querySelector('.popup__photos').textContent = '';
   for (i = 0; i < dataSourceItem.offer.photos.length; i++) {
-    fragment.querySelector('.popup__photos').appendChild(imageFragment.cloneNode()).src = dataSourceItem.offer.photos[i];
+    var photo = fragment.querySelector('.popup__photos').appendChild(imageFragment.cloneNode());
+    photo.src = dataSourceItem.offer.photos[i];
   }
 
   return fragment;
