@@ -74,6 +74,20 @@ var markSize = { /* Размер метки */
   width: 50,
   height: 70
 };
+var map = document.querySelector('.map');
+var adForm = document.querySelector('.ad-form');
+var adFormFieldset = document.querySelectorAll('.ad-form fieldset');
+var mainMark = document.querySelector('.map__pin--main');
+var initialMarkSize = {
+  width: 65,
+  height: 65
+};
+var mainMarkSize = {
+  width: 65,
+  height: 87
+};
+var addressInput = document.querySelector('#address');
+var ESC_KEYCODE = 27;
 
 // Генерирует массив тестовых данных
 var renderTestData = function (testData, quantity) {
@@ -142,8 +156,6 @@ var createMarkList = function (dataSource, markFragmentTemplateSrc, markSizeSrc)
 
 // Добавляет метки на карту
 var addMarkListToMap = function (dataSource, markFragmentTemplateSrc, markSizeSrc) {
-  var map = document.querySelector('.map');
-  map.classList.remove('map--faded');
   var markList = createMarkList(dataSource, markFragmentTemplateSrc, markSizeSrc);
   map.querySelector('.map__pins').appendChild(markList);
 };
@@ -179,16 +191,90 @@ var createAdFragment = function (dataSourceItem, markFragmentTemplateSrc) {
     photo.src = dataSourceItem.offer.photos[i];
   }
 
+  // Добавляет аватар
+  fragment.querySelector('.popup__avatar').src = dataSourceItem.author.avatar;
+
   return fragment;
 };
 
 // Генерирует и добавляет объявление на карту
 var addAdToMap = function (dataSourceItem, adFragmentTemplateSrc) {
-  var map = document.querySelector('.map');
-  var ad = document.createDocumentFragment().appendChild(createAdFragment(dataSourceItem, adFragmentTemplateSrc));
+  var existedCard = document.querySelector('.map__card');
+  if (existedCard) {
+    map.removeChild(existedCard);
+  }
+  var ad = document.createDocumentFragment()
+      .appendChild(createAdFragment(dataSourceItem, adFragmentTemplateSrc));
   map.insertBefore(ad, map.querySelector('.map__filters-container'));
 };
 
-var testData = renderTestData(testDataSource, markQuantity);
-addMarkListToMap(testData, markFragmentTemplate, markSize);
-addAdToMap(testData[1], adFragmentTemplate);
+// Переводит в спящий режим
+var setSleepMode = function () {
+  map.classList.add('map--faded');
+  adForm.classList.add('ad-form--disabled');
+  for (var i = 0; i < adFormFieldset.length; i++) {
+    adFormFieldset[i].disabled = true;
+  }
+  mainMark.addEventListener('mouseup', setActiveMode);
+  map.removeEventListener('click', onCloseAdBtnClick);
+  document.removeEventListener('keydown', onEscPress);
+};
+
+// Переводит в активный режим
+var setActiveMode = function () {
+  /* Подготавливает карту и форму для использования */
+  map.classList.remove('map--faded');
+  adForm.classList.remove('ad-form--disabled');
+  for (var i = 0; i < adFormFieldset.length; i++) {
+    adFormFieldset[i].disabled = false;
+  }
+
+  /* Выводит на карту метки */
+  var testData = renderTestData(testDataSource, markQuantity);
+  addMarkListToMap(testData, markFragmentTemplate, markSize);
+  addListenersToMarks(testData);
+
+  /* Добваляет слушатели */
+  mainMark.removeEventListener('mouseup', setActiveMode);
+  map.addEventListener('click', onCloseAdBtnClick);
+  document.addEventListener('keydown', onEscPress);
+};
+
+var getMainMarkCoords = function (evt) {
+  if (evt) {
+    addressInput.value = evt.clientX + Math.round(mainMarkSize.width / 2) + ', ';
+    addressInput.value += evt.clientY + mainMarkSize.height;
+  } else {
+    var initialMainMarkCoords = mainMark.getBoundingClientRect();
+    addressInput.value = initialMainMarkCoords.left + Math.round(initialMarkSize.width / 2) + ', ';
+    addressInput.value += initialMainMarkCoords.top + Math.round(initialMarkSize.height / 2);
+  }
+};
+
+var addListenersToMarks = function (testDataSrc) {
+  var marks = map.querySelectorAll('.map__pin[type="button"]');
+  for (var i = 0; i < marks.length; i++) {
+    (function (mark, number) {
+      mark.addEventListener('click', function () {
+        addAdToMap(testDataSrc[number], adFragmentTemplate);
+      });
+    })(marks[i], i);
+  }
+};
+
+var onCloseAdBtnClick = function (evt) {
+  var closeAdBtn = map.querySelector('.popup__close');
+  if (evt.target === closeAdBtn) {
+    map.removeChild(map.querySelector('.map__card'));
+  }
+};
+
+var onEscPress = function (evt) {
+  if (evt.keyCode === ESC_KEYCODE && map.querySelector('.map__card')) {
+    map.removeChild(map.querySelector('.map__card'));
+  }
+};
+
+setSleepMode();
+getMainMarkCoords();
+mainMark.addEventListener('mouseup', getMainMarkCoords);
