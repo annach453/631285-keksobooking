@@ -67,6 +67,7 @@ var testDataSource = {
     'http://o0.github.io/assets/images/tokyo/hotel3.jpg'
   ],
 };
+var ESC_KEYCODE = 27;
 var markQuantity = 8; // Количество меток на карте
 var markFragmentTemplate = document.querySelector('template').content.querySelector('.map__pin'); // Фрагмент для вывода меток
 var adFragmentTemplate = document.querySelector('template').content.querySelector('.map__card'); // Фрагмент для вывода объявления
@@ -86,8 +87,28 @@ var mainMarkSize = {
   width: 65,
   height: 87
 };
-var addressInput = document.querySelector('#address');
-var ESC_KEYCODE = 27;
+var adAddress = adForm.querySelector('#address');
+var adType = adForm.querySelector('#type');
+var adPrice = adForm.querySelector('#price');
+var adMinPrices = {
+  flat: 1000,
+  bungalo: 0,
+  house: 5000,
+  palace: 10000
+};
+var adCheckIn = adForm.querySelector('#timein');
+var adCheckOut = adForm.querySelector('#timeout');
+var adRoomNumber = adForm.querySelector('#room_number');
+var adCapacity = adForm.querySelector('#capacity');
+var adCapacityOptions = adForm.querySelectorAll('option');
+var adCapacityValues = {
+  1: ['1'],
+  2: ['2', '1'],
+  3: ['3', '2', '1'],
+  100: ['0']
+};
+var adFormValidatedFields = adForm.querySelectorAll('#title, #price, #capacity');
+var adFormSubmitBtn = adForm.querySelector('.ad-form__submit');
 
 // Генерирует массив тестовых данных
 var renderTestData = function (testData, quantity) {
@@ -96,6 +117,7 @@ var renderTestData = function (testData, quantity) {
   for (var i = 0; i < quantity; i++) {
     var locationX = getRandomValueFromRange(300, 900);
     var locationY = getRandomValueFromRange(150, 500);
+    var checkTime = getRandomArrayValue(testData.checkinChecoutTimeSrc);
     testdata.push({
       author: {
         avatar: testData.avatarSrc(i + 1),
@@ -107,8 +129,8 @@ var renderTestData = function (testData, quantity) {
         type: getRandomArrayValue(testData.typeSrc),
         rooms: getRandomValueFromRange(1, 5),
         guests: getRandomValueFromRange(1, 10),
-        checkin: getRandomArrayValue(testData.checkinChecoutTimeSrc),
-        checkout: getRandomArrayValue(testData.checkinChecoutTimeSrc),
+        checkin: checkTime,
+        checkout: checkTime,
         features: getRandomArrayValues(testData.featuresSrc),
         description: '',
         photos: shuffleArray(testData.photosSrc)
@@ -218,6 +240,12 @@ var setSleepMode = function () {
   mainMark.addEventListener('mouseup', setActiveMode);
   map.removeEventListener('click', onCloseAdBtnClick);
   document.removeEventListener('keydown', onEscPress);
+  adType.removeEventListener('input', onAdTypeChange);
+  adCheckIn.removeEventListener('input', onCheckInChange);
+  adCheckOut.removeEventListener('input', onCheckOutChange);
+  adRoomNumber.removeEventListener('input', onRoomNumberChange);
+  adFormSubmitBtn.removeEventListener('invalid', onSubmitBtnClick);
+  adForm.removeEventListener('input', onValidatedFieldsChange);
 };
 
 // Переводит в активный режим
@@ -238,28 +266,36 @@ var setActiveMode = function () {
   mainMark.removeEventListener('mouseup', setActiveMode);
   map.addEventListener('click', onCloseAdBtnClick);
   document.addEventListener('keydown', onEscPress);
+  adType.addEventListener('input', onAdTypeChange);
+  adCheckIn.addEventListener('input', onCheckInChange);
+  adCheckOut.addEventListener('input', onCheckOutChange);
+  adRoomNumber.addEventListener('input', onRoomNumberChange);
+  adFormSubmitBtn.addEventListener('click', onSubmitBtnClick);
+  adForm.addEventListener('input', onValidatedFieldsChange);
 };
 
 var getMainMarkCoords = function (evt) {
   if (evt) {
-    addressInput.value = evt.clientX + Math.round(mainMarkSize.width / 2) + ', ';
-    addressInput.value += evt.clientY + mainMarkSize.height;
+    adAddress.value = evt.clientX + Math.round(mainMarkSize.width / 2) + ', ';
+    adAddress.value += evt.clientY + mainMarkSize.height;
   } else {
     var initialMainMarkCoords = mainMark.getBoundingClientRect();
-    addressInput.value = initialMainMarkCoords.left + Math.round(initialMarkSize.width / 2) + ', ';
-    addressInput.value += initialMainMarkCoords.top + Math.round(initialMarkSize.height / 2);
+    adAddress.value = initialMainMarkCoords.left + Math.round(initialMarkSize.width / 2) + ', ';
+    adAddress.value += initialMainMarkCoords.top + Math.round(initialMarkSize.height / 2);
   }
 };
 
 var addListenersToMarks = function (testDataSrc) {
   var marks = map.querySelectorAll('.map__pin[type="button"]');
   for (var i = 0; i < marks.length; i++) {
-    (function (mark, number) {
-      mark.addEventListener('click', function () {
-        addAdToMap(testDataSrc[number], adFragmentTemplate);
-      });
-    })(marks[i], i);
+    addListenerToMark(marks[i], i, testDataSrc);
   }
+};
+
+var addListenerToMark = function (mark, number, testDataSrc) {
+  mark.addEventListener('click', function () {
+    addAdToMap(testDataSrc[number], adFragmentTemplate);
+  });
 };
 
 var onCloseAdBtnClick = function (evt) {
@@ -272,6 +308,50 @@ var onCloseAdBtnClick = function (evt) {
 var onEscPress = function (evt) {
   if (evt.keyCode === ESC_KEYCODE && map.querySelector('.map__card')) {
     map.removeChild(map.querySelector('.map__card'));
+  }
+};
+
+/* Валидация полей формы */
+var onAdTypeChange = function () {
+  var minValue = adMinPrices[adType.value];
+  adPrice.min = minValue;
+  adPrice.placeholder = minValue;
+};
+
+var onCheckInChange = function () {
+  adCheckOut.value = adCheckIn.value;
+};
+
+var onCheckOutChange = function () {
+  adCheckIn.value = adCheckOut.value;
+};
+
+var onRoomNumberChange = function () {
+  for (var i = 0; i < adCapacityOptions.length; i++) {
+    if (adCapacityValues[adRoomNumber.value].indexOf(adCapacityOptions[i].value) === -1) {
+      adCapacityOptions[i].disabled = true;
+    } else {
+      adCapacityOptions[i].disabled = false;
+    }
+  }
+  if (adCapacityValues[adRoomNumber.value].indexOf(adCapacity.value) === -1) {
+    adCapacity.setCustomValidity('Неверное количество гостей. Выберите один из доступных вариантов для указанного количества комнат.');
+  }
+};
+
+var onSubmitBtnClick = function () {
+  for (var i = 0; i < adFormValidatedFields.length; i++) {
+    if (!adFormValidatedFields[i].validity.valid) {
+      adFormValidatedFields[i].style.boxShadow = '0 0 0px 3px #ff0000';
+    }
+  }
+};
+
+var onValidatedFieldsChange = function (evt) {
+  for (var i = 0; i < adFormValidatedFields.length; i++) {
+    if (adFormValidatedFields[i] === evt.target && adFormValidatedFields[i].validity.valid) {
+      adFormValidatedFields[i].style.boxShadow = '';
+    }
   }
 };
 
