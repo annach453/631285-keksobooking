@@ -100,7 +100,7 @@ var adCheckIn = adForm.querySelector('#timein');
 var adCheckOut = adForm.querySelector('#timeout');
 var adRoomNumber = adForm.querySelector('#room_number');
 var adCapacity = adForm.querySelector('#capacity');
-var adCapacityOptions = adForm.querySelectorAll('option');
+var adCapacityOptions = adForm.querySelectorAll('#capacity option');
 var adCapacityValues = {
   1: ['1'],
   2: ['2', '1'],
