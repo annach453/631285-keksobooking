@@ -328,12 +328,18 @@ var onCheckOutChange = function () {
 
 var onRoomNumberChange = function () {
   for (var i = 0; i < adCapacityOptions.length; i++) {
-    if (adCapacityValues[adRoomNumber.value].indexOf(adCapacityOptions[i].value) === -1) {
+    var availableCapacityValues = adCapacityValues[adRoomNumber.value];
+    if (availableCapacityValues.indexOf(adCapacityOptions[i].value) === -1) {
       adCapacityOptions[i].disabled = true;
     } else {
       adCapacityOptions[i].disabled = false;
     }
   }
+
+  if (availableCapacityValues.indexOf(adCapacity.value) === -1) {
+    adCapacity.value = availableCapacityValues[availableCapacityValues.length - 1];
+  }
+
   if (adCapacityValues[adRoomNumber.value].indexOf(adCapacity.value) === -1) {
     adCapacity.setCustomValidity('Неверное количество гостей. Выберите один из доступных вариантов для указанного количества комнат.');
   }
