@@ -281,11 +281,11 @@ var setActiveMode = function () {
 var getMainMarkCoords = function (initialMarkSrc) {
   var mainMarkCoords = mainMark.getBoundingClientRect();
   if (initialMarkSrc) {
-    adAddress.value = Math.round(mainMarkCoords.left + initialMarkSize.width / 2) + ', ';
-    adAddress.value += Math.round(mainMarkCoords.top + initialMarkSize.height / 2);
+    adAddress.value = Math.round(mainMarkCoords.left + initialMarkSize.width / 2) + pageXOffset + ', ';
+    adAddress.value += Math.round(mainMarkCoords.top + initialMarkSize.height / 2) + pageYOffset;
   } else {
-    adAddress.value = Math.round(mainMarkCoords.left + mainMarkSize.width / 2) + ', ';
-    adAddress.value += Math.round(mainMarkCoords.top + mainMarkSize.height);
+    adAddress.value = Math.round(mainMarkCoords.left + mainMarkSize.width / 2) + pageXOffset + ', ';
+    adAddress.value += Math.round(mainMarkCoords.top + mainMarkSize.height) + pageYOffset;
   }
 };
 
@@ -394,20 +394,20 @@ var onMainMarkMove = function (evt) {
     if (newCoords.x > pinsAreaCoords.width - mainMarkSize.width / 2) {
       newCoords.x = pinsAreaCoords.width - mainMarkSize.width / 2;
     }
-    if (newCoords.y < 150) {
-      newCoords.y = 150;
+    if (newCoords.y < 150 - mainMarkSize.height) {
+      newCoords.y = 150 - mainMarkSize.height;
     }
-    if (newCoords.y > 500) {
-      newCoords.y = 500;
+    if (newCoords.y > 500 - mainMarkSize.height) {
+      newCoords.y = 500 - mainMarkSize.height;
     }
     mainMark.style.top = newCoords.y + 'px';
     mainMark.style.left = newCoords.x + 'px';
-    getMainMarkCoords(initialMainMark);
+    getMainMarkCoords();
   };
 
   var onMouseUp = function (mouseUpEvt) {
     mouseUpEvt.preventDefault();
-    getMainMarkCoords(initialMainMark);
+    getMainMarkCoords();
     document.removeEventListener('mousemove', onMouseMove);
     document.removeEventListener('mouseup', onMouseUp);
   };
@@ -418,7 +418,6 @@ var onMainMarkMove = function (evt) {
 
 var onInitialMarkMouseMove = function () {
   document.removeEventListener('mousemove', onInitialMarkMouseMove);
-  document.addEventListener('mouseup', onInitialMarkMouseUp);
 };
 var onInitialMarkMouseUp = function () {
   setActiveMode();
@@ -426,6 +425,7 @@ var onInitialMarkMouseUp = function () {
 };
 var onInitialMarkMouseDown = function () {
   document.addEventListener('mousemove', onInitialMarkMouseMove);
+  document.addEventListener('mouseup', onInitialMarkMouseUp);
 };
 
 var initialMainMark;
