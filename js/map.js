@@ -76,6 +76,7 @@ var markSize = { /* Размер метки */
   height: 70
 };
 var map = document.querySelector('.map');
+var pinsArea = document.querySelector('.map__pins');
 var adForm = document.querySelector('.ad-form');
 var adFormFieldset = document.querySelectorAll('.ad-form fieldset');
 var mainMark = document.querySelector('.map__pin--main');
@@ -85,7 +86,7 @@ var initialMarkSize = {
 };
 var mainMarkSize = {
   width: 65,
-  height: 87
+  height: 84
 };
 var adAddress = adForm.querySelector('#address');
 var adType = adForm.querySelector('#type');
@@ -179,7 +180,7 @@ var createMarkList = function (dataSource, markFragmentTemplateSrc, markSizeSrc)
 // Добавляет метки на карту
 var addMarkListToMap = function (dataSource, markFragmentTemplateSrc, markSizeSrc) {
   var markList = createMarkList(dataSource, markFragmentTemplateSrc, markSizeSrc);
-  map.querySelector('.map__pins').appendChild(markList);
+  pinsArea.appendChild(markList);
 };
 
 // Создает фрагмент с объявлением
@@ -237,7 +238,7 @@ var setSleepMode = function () {
   for (var i = 0; i < adFormFieldset.length; i++) {
     adFormFieldset[i].disabled = true;
   }
-  mainMark.addEventListener('mouseup', setActiveMode);
+  mainMark.addEventListener('mousedown', onInitialMarkMouseDown);
   map.removeEventListener('click', onCloseAdBtnClick);
   document.removeEventListener('keydown', onEscPress);
   adType.removeEventListener('input', onAdTypeChange);
@@ -246,6 +247,7 @@ var setSleepMode = function () {
   adRoomNumber.removeEventListener('input', onRoomNumberChange);
   adFormSubmitBtn.removeEventListener('invalid', onSubmitBtnClick);
   adForm.removeEventListener('input', onValidatedFieldsChange);
+  initialMainMark = true;
 };
 
 // Переводит в активный режим
@@ -262,8 +264,8 @@ var setActiveMode = function () {
   addMarkListToMap(testData, markFragmentTemplate, markSize);
   addListenersToMarks(testData);
 
-  /* Добваляет слушатели */
-  mainMark.removeEventListener('mouseup', setActiveMode);
+  /* Добавляет слушатели */
+  mainMark.removeEventListener('mousedown', onInitialMarkMouseDown);
   map.addEventListener('click', onCloseAdBtnClick);
   document.addEventListener('keydown', onEscPress);
   adType.addEventListener('input', onAdTypeChange);
@@ -272,16 +274,18 @@ var setActiveMode = function () {
   adRoomNumber.addEventListener('input', onRoomNumberChange);
   adFormSubmitBtn.addEventListener('click', onSubmitBtnClick);
   adForm.addEventListener('input', onValidatedFieldsChange);
+
+  initialMainMark = false;
 };
 
-var getMainMarkCoords = function (evt) {
-  if (evt) {
-    adAddress.value = evt.clientX + Math.round(mainMarkSize.width / 2) + ', ';
-    adAddress.value += evt.clientY + mainMarkSize.height;
+var getMainMarkCoords = function (initialMarkSrc) {
+  var mainMarkCoords = mainMark.getBoundingClientRect();
+  if (initialMarkSrc) {
+    adAddress.value = Math.round(mainMarkCoords.left + initialMarkSize.width / 2) + pageXOffset + ', ';
+    adAddress.value += Math.round(mainMarkCoords.top + initialMarkSize.height / 2) + pageYOffset;
   } else {
-    var initialMainMarkCoords = mainMark.getBoundingClientRect();
-    adAddress.value = initialMainMarkCoords.left + Math.round(initialMarkSize.width / 2) + ', ';
-    adAddress.value += initialMainMarkCoords.top + Math.round(initialMarkSize.height / 2);
+    adAddress.value = Math.round(mainMarkCoords.left + mainMarkSize.width / 2) + pageXOffset + ', ';
+    adAddress.value += Math.round(mainMarkCoords.top + mainMarkSize.height) + pageYOffset;
   }
 };
 
@@ -361,6 +365,71 @@ var onValidatedFieldsChange = function (evt) {
   }
 };
 
+/* Перемещение метки */
+var onMainMarkMove = function (evt) {
+  evt.preventDefault();
+  var startCoords = {
+    x: evt.clientX,
+    y: evt.clientY
+  };
+
+  var onMouseMove = function (mouseMoveEvt) {
+    mouseMoveEvt.preventDefault();
+    var pinsAreaCoords = pinsArea.getBoundingClientRect();
+    var shift = {
+      x: startCoords.x - mouseMoveEvt.clientX,
+      y: startCoords.y - mouseMoveEvt.clientY
+    };
+    startCoords = {
+      x: mouseMoveEvt.clientX,
+      y: mouseMoveEvt.clientY
+    };
+    var newCoords = {
+      x: mainMark.offsetLeft - shift.x,
+      y: mainMark.offsetTop - shift.y
+    };
+    if (newCoords.x < -mainMarkSize.width / 2) {
+      newCoords.x = -mainMarkSize.width / 2;
+    }
+    if (newCoords.x > pinsAreaCoords.width - mainMarkSize.width / 2) {
+      newCoords.x = pinsAreaCoords.width - mainMarkSize.width / 2;
+    }
+    if (newCoords.y < 150 - mainMarkSize.height) {
+      newCoords.y = 150 - mainMarkSize.height;
+    }
+    if (newCoords.y > 500 - mainMarkSize.height) {
+      newCoords.y = 500 - mainMarkSize.height;
+    }
+    mainMark.style.top = newCoords.y + 'px';
+    mainMark.style.left = newCoords.x + 'px';
+    getMainMarkCoords();
+  };
+
+  var onMouseUp = function (mouseUpEvt) {
+    mouseUpEvt.preventDefault();
+    getMainMarkCoords();
+    document.removeEventListener('mousemove', onMouseMove);
+    document.removeEventListener('mouseup', onMouseUp);
+  };
+
+  document.addEventListener('mousemove', onMouseMove);
+  document.addEventListener('mouseup', onMouseUp);
+};
+
+var onInitialMarkMouseMove = function () {
+  document.removeEventListener('mousemove', onInitialMarkMouseMove);
+};
+var onInitialMarkMouseUp = function () {
+  setActiveMode();
+  document.removeEventListener('mouseup', onInitialMarkMouseUp);
+};
+var onInitialMarkMouseDown = function () {
+  document.addEventListener('mousemove', onInitialMarkMouseMove);
+  document.addEventListener('mouseup', onInitialMarkMouseUp);
+};
+
+var initialMainMark;
 setSleepMode();
-getMainMarkCoords();
-mainMark.addEventListener('mouseup', getMainMarkCoords);
+getMainMarkCoords(initialMainMark);
+mainMark.addEventListener('mousedown', onMainMarkMove);
+
